@@ -93,7 +93,7 @@ while curndx<N-P-rang
 
     xwind=xpad(ndxwind);
     %% calc llk
-    lnone=-P/2*log(2*pi)+.5*log(detlamb)-.5*sum((xwind.*((lamda)*xwind)));
+    lnone=0.5*log(detlamb)-.5*sum((xwind.*((lamda)*xwind)));
     lon=zeros(C+1,n);
     for c=1:C+1
         % Calculate the log likelihood of a spike from cluster c being in the data
@@ -101,7 +101,7 @@ while curndx<N-P-rang
         Q=sig+(1+kappa(c))./kappa(c)*A*(lamclus{c}\A');
         xwindm=bsxfun(@minus,xwind,A*muu(:,c));
         Re=(ndx-tlastspike(c)) < 5 * samplingrate/1000; % refractory period
-        lon(c,:)=-P/2*log(2*pi)-sum(log(diag(chol(Q))))-.5*sum(xwindm.*(Q\xwindm))-double(Re)*1e5;
+        lon(c,:)=-sum(log(diag(chol(Q))))-.5*sum(xwindm.*(Q\xwindm))-double(Re)*1e5;
     end
 
     % Calculate the log likelihood of a spike from a new cluster being in the data

@@ -54,6 +54,7 @@ params.Phi_0=0.1*eye(K);
 params.a_pii=1;
 params.b_pii=1e7;
 params.bet=1./(30*samplingrate);
+params.samplingrate = samplingrate;
 %% Run fake_opass
 if run_FAKEOPASS
     %%
