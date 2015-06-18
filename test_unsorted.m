@@ -33,14 +33,14 @@ maxtimepoints=120*samplingrate; % limit to first 120s to simulate online system
 A=U(:,1:K);
 
 %% Set parameters:
-% params.alph=0.1;
-params.alph=0.2;
-params.kappa_0=0.001;
-params.Nu_0=0.1;
+params.alph=0.1;
+params.kappa_0=0.01;
+params.nu_0=0.1;
 params.Phi_0=0.1*eye(K);
 params.a_pii=1;
-params.b_pii=1e6;
+params.b_pii=1e5;
 params.bet=1./(30*samplingrate);
+params.samplingrate = samplingrate;
 
 %% Run fake_opass
 if run_FAKEOPASS
