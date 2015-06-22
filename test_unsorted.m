@@ -1,7 +1,8 @@
 %% test all algorithms
 % set which algorithms to run
 run_FAKEOPASS=false;
-run_OPASS=true;
+run_ASUGS=true;
+run_OPASS=false;
 run_OPASS_A=false;
 run_M_OPASS=false;
 run_M_OPASS_A=false;
@@ -12,7 +13,7 @@ run_M_OPASS_A=false;
 % what part of the dataset to use
 mT=size(X,1);
 x=X(1000:mT,1); % load channel 1
-xa=X;
+xa=X(1000:mT,:);
 
 [N,numCh]=size(x);
 
@@ -21,7 +22,7 @@ samplingrate=3e4; % 30 kHz
 %% Set paramters
 P=round(3e-3*samplingrate); % window size is 3ms
 maxpoint=round(1.5e-3*samplingrate); % where to align waveform peaks
-K=5; % Number of PCA components to use.
+K=4; % Number of PCA components to use.
 sig=std(x); % Noise standard deviation estimate
 thres=3*sig; % Detection voltage threshold
 
@@ -33,12 +34,13 @@ maxtimepoints=120*samplingrate; % limit to first 120s to simulate online system
 A=U(:,1:K);
 
 %% Set parameters:
-params.alph=0.1;
-params.kappa_0=0.01;
-params.nu_0=0.1;
+params.alph=0.01;
+params.kappa_0=0.1;
+params.nu_0=8;
 params.Phi_0=0.1*eye(K);
 params.a_pii=1;
 params.b_pii=1e5;
+% params.b_pii=1e7;
 params.bet=1./(30*samplingrate);
 params.samplingrate = samplingrate;
 
@@ -62,6 +64,42 @@ if run_FAKEOPASS
     end
     xlabel('pc-1');ylabel('pc-2');zlabel('pc-3');title('\tt FAKE-OPASS','FontSize',20)
     hold off
+end
+%% run ASUGS-OPASS
+if run_ASUGS
+%     clear params
+tic;
+    [z,gam,ngam,muu,lamclus,nu,kappa,Phi,S]=asugs(xa,A,params); time1 = toc;
+    %% Plot non-trivial clusters
+    % Plot spikes
+    C=max(gam);
+    col=hsv(C);
+    figure(1);clf;hold on
+    for c=1:C
+        plot(S(1,gam==c),S(2,gam==c),'.','Color',col(c,:),'markersize',20)
+    end
+    hold off
+    xlabel('PCA Component 1','FontSize',16)
+    ylabel('PCA Component 2','FontSize',16)
+    title('Inferred y_k Values for Detected Spikes','FontSize',18)
+end
+%% run ASUGS-OPASS-M
+if run_ASUGS-M
+%     clear params
+tic;
+    [z,gam,ngam,muu,lamclus,nu,kappa,Phi,S]=asugs_m(xa,P,params); time1 = toc;
+    %% Plot non-trivial clusters
+    % Plot spikes
+    C=max(gam);
+    col=hsv(C);
+    figure(1);clf;hold on
+    for c=1:C
+        plot(S(1,gam==c),S(2,gam==c),'.','Color',col(c,:),'markersize',20)
+    end
+    hold off
+    xlabel('PCA Component 1','FontSize',16)
+    ylabel('PCA Component 2','FontSize',16)
+    title('Inferred y_k Values for Detected Spikes','FontSize',18)
 end
 %% run OPASS
 if run_OPASS
