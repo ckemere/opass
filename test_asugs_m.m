@@ -20,19 +20,21 @@ maxtimepoints=120*samplingrate; % limit to first 120s to simulate online system
 %% Reduce dimensionality
 % [A,S,V]=svds(spikes,K);
 A = zeros(P*numCh, K*numCh);
+% A = cell(numCh,1);
 for d = 1:numCh
     [u,s,v] = svds(spikes([1:P] + (d-1)*P,:),K);
+    % A{d} = u;
     A([1:P]+(d-1)*P, [1:K] + (d-1)*K) = u;
 end
 
 %% Set parameters:
 params.alph=0.001;
 params.alph_lamda = 1/params.alph;
-params.kappa_0=0.1;
+params.kappa_0=0.2;
 params.nu_0=K*numCh;
-params.Phi_0=0.1*eye(K*numCh);
+params.Phi_0=eye(K*numCh);
 params.a_pii=1;
-params.b_pii=1e8;
+params.b_pii=2.5;
 % params.b_pii=1e7;
 params.bet=1./(30*samplingrate);
 params.samplingrate = samplingrate;

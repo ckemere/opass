@@ -103,6 +103,7 @@ while curndx<N-P-rang
         %   = sig + r*A*Phi{c}*A'
         % lamda = inv(sig) % Phi{c}=inv(lamclus{c})
         r = Kappa(c)/(1+Kappa(c));
+        Q = sig + r*A*Phi{c}*A';
         Qupdate = r*inv(Phi{c}) + A'*lamda*A;
         cholQupdate = chol(Qupdate);
         Qinv = lamda - lamda * A * inv(cholQupdate)*inv(cholQupdate)' * A' * lamda;
@@ -115,9 +116,9 @@ while curndx<N-P-rang
             Re = 0;
         end
 
-        % lon(c,:)=-P/2*log(2*pi)-sum(log(diag(chol(Q))))-.5*sum(xwindm.*(Q\xwindm))-double(Re)*1e5;
-        lon(c,:) = -P/2*log(2*pi) - 0.5 * logDetQ  - 0.5*sum(xwindm .* (Qinv * xwindm)) + ...
-            -double(Re)*1e5;
+        lon(c,:)=-P/2*log(2*pi)-sum(log(diag(chol(Q))))-.5*sum(xwindm.*(Q\xwindm))-double(Re)*1e5;
+        % lon(c,:) = -P/2*log(2*pi) - 0.5 * logDetQ  - 0.5*sum(xwindm .* (Qinv * xwindm)) + ...
+            % -double(Re)*1e5;
     end
 
     lpi_c=log(ngam./(alph+nz));
@@ -125,14 +126,19 @@ while curndx<N-P-rang
     lon=bsxfun(@plus,lpi_c(1:C+1,:),lon);
 
     % Sum over all neurons
-    H=bsxfun(@minus,lon,max(lon));
-    Hadj=log(sum(exp(H)));
-    lthr=lnone-max(lon)-Hadj;
+    if (C > 0)
+        H=bsxfun(@minus,lon,max(lon));
+        Hadj=log(sum(exp(H)));
+        lthr=lnone-max(lon)-Hadj;
+    else
+        lthr = lnone-lon;
+    end
     %% Find new spike
     Q=find(lthr<thr,1,'first');
     % no spike
     if (numel(Q)==0) || Q>lookahead-rang
         curndx=curndx+lookahead-rang;
+        keyboard
         continue
     end
 

@@ -27,26 +27,32 @@ curndx=0;
 lookahead=10*samplingrate/1000;
 rang=3 * samplingrate/1000;
 %%
-[N,D]=size(x);
-[PD,K] = size(A);
-P = PD/D;
+[N,D]=size(x); % N is number of time points, D is number of dimensions
+if ~iscell(A)
+    if D > 1
+        error('The matrix A should be a cell array of length size(x,2).');
+    end
+    Atemp{1} = A
+    A = Atemp;
+    clear Atemp;
+end
 
-CC = zeros(PD,maxtimepoints);
-fprintf('Forming lag matrix.');
-for i=0:(size(CC,2)-1)
-   for d = 0:(D-1)
-       CC(d*P + [1:P],i+1) = x(i+[1:P],d+1);
-   end
+[P,K] = size(A{1});
+
+for d = 1:D
+    CC = zeros(P,maxtimepoints);
+    fprintf('Forming lag matrix.');
+    for i=0:(size(CC,2)-1)
+        CC(:,i+1) = x(i+[1:P],d);
+    end
+    %%%%% "sig" will be the covariance matrix of a 90x4 (i.e., 360x1) observation
+    %%%%% "lamda" is just sig inverse
+    sig{d} = CC*CC' / size(CC,2); 
+    logDetSig{d} = 2*sum(log(diag(chol(sig{d}))));
+    lamda{d}=inv(sig{d});
 end
 fprintf('\n');
 
-%%%%% "sig" will be the covariance matrix of a 90x4 (i.e., 360x1) observation
-%%%%% "lamda" is just sig inverse
-sig = CC*CC';
-sig = sig/size(CC,2);
-logDetSig = 2*sum(log(diag(chol(sig))));
-lamda=inv(sig);
-% detlamb=det(lamda);
 
 %%
 thr=log(apii/(bpii-apii));
@@ -56,11 +62,11 @@ Phi=cell(Cmax,1);
 for c=1:Cmax
     Phi{c}=Phi0;
 end
-muu0=zeros(K,1);
+muu0=zeros(D*K,1);
 Kappa=Kappa_0*ones(Cmax,1);
-muu=zeros(K,Cmax);
+muu=zeros(K*D,Cmax);
 %%
-xpad=[x;zeros(PD,D)];
+xpad=[x;zeros(P,D)];
 %%
 C=0;
 nz=0;
@@ -86,13 +92,19 @@ while curndx<N-P-rang
     ndx=(curndx+1:min(mT-P-rang,curndx+lookahead));n=numel(ndx);
     ndxwind=bsxfun(@plus,ndx,[0:P-1]');
 
-    xwind = zeros(PD,n);
-    for i = 1:n
-        xwind(:,i) = reshape(xpad(ndxwind(:,i),:),PD,1);
+    xwind = zeros(P,n,D);
+    for d = 1:D
+        for i = 1:n
+            xwind(:,i,d) = reshape(xpad(ndxwind(:,i),d),P,1);
+        end
     end
 
     %% calc llk
-    lnone=-P/2*log(2*pi) - 0.5*logDetSig-.5*sum((xwind.*((lamda)*xwind)));
+    lnone = 0;
+    for d = 1:D
+        lnone = lnone + -P/2*log(2*pi) - 0.5*logDetSig{d} + ...
+            -.5*sum((xwind(:,:,d).*((lamda{d})*xwind(:,:,d))));
+    end
     lon=zeros(C+1,n);
     for c=1:C+1
         % Calculate the log likelihood of a spike from cluster c being in the data
@@ -103,21 +115,24 @@ while curndx<N-P-rang
         %   = sig + r*A*Phi{c}*A'
         % lamda = inv(sig) % Phi{c}=inv(lamclus{c})
         r = Kappa(c)/(1+Kappa(c));
-        Qupdate = r*inv(Phi{c}) + A'*lamda*A;
-        cholQupdate = chol(Qupdate);
-        Qinv = lamda - lamda * A * inv(cholQupdate)*inv(cholQupdate)' * A' * lamda;
-        logDetQ = 2*log(det(cholQupdate)) + K*log(r) + log(det(Phi{c})) + logDetSig ;
+        for d = 1:D
+            phi_d = Phi{c}((d-1)*K + [1:K],(d-1)*K + [1:K]);
+            Qupdate = 1/r*inv(phi_d) + A{d}'*lamda{d}*A{d};
+            cholQupdate = chol(Qupdate);
+            Qinv = lamda{d} - lamda{d} * A{d} * inv(Qupdate) * A{d}' * lamda{d};
+            % Qinv = lamda{d} - lamda{d} * A{d} * inv(cholQupdate)*inv(cholQupdate)' * A{d}' * lamda{d};
+            logDetQ = 2*log(det(cholQupdate)) + K*log(r) + log(det(phi_d)) + logDetSig{d};
 
-        xwindm=bsxfun(@minus,xwind,A*muu(:,c));
+            xwindm=bsxfun(@minus,xwind(:,:,d),A{d}*muu([1:K] + (d-1)*K,c));
+
+            lon(c,:) = lon(c,:) + -P/2*log(2*pi) - 0.5 * logDetQ  - 0.5*sum(xwindm .* (Qinv * xwindm));
+        end
         if (c < C+1)
             Re=(ndx-tlastspike(c)) < 5 * samplingrate/1000; % refractory period
+            lon(c,:) = lon(c,:) - double(Re)*1e5;
         else
             Re = 0;
         end
-
-        % lon(c,:)=-P/2*log(2*pi)-sum(log(diag(chol(Q))))-.5*sum(xwindm.*(Q\xwindm))-double(Re)*1e5;
-        lon(c,:) = -P/2*log(2*pi) - 0.5 * logDetQ  - 0.5*sum(xwindm .* (Qinv * xwindm)) + ...
-            -double(Re)*1e5;
     end
 
     lpi_c=log(ngam./(alph+nz));
@@ -145,7 +160,9 @@ while curndx<N-P-rang
     z(Qt)=1;
 
     [~,cTemp]=max(lon(:,Q));
-    yhat=A'*xwind(:,Q);
+    for d = 1:D
+        yhat([1:K] + (d-1)*K,1) = A{d}'*xwind(:,Q,d);
+    end
     for c = 1:C+1
         r = Kappa(c)/(1+Kappa(c));
         dmuu = yhat - muu(:,c);
@@ -187,7 +204,7 @@ while curndx<N-P-rang
 
     keyboard
     for d = 1:D
-        xpad(Qt:Qt+P-1,d)=xpad(Qt:Qt+P-1,d)-A([1:P] + (d-1)*P,:)*yhat;
+        xpad(Qt:Qt+P-1,d)=xpad(Qt:Qt+P-1,d)-A{d}*yhat([1:K] + (d-1)*K);
     end
 
     S(:,Qt)=yhat;

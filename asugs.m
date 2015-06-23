@@ -1,8 +1,7 @@
 function [z,gam,ngam,muu,lamclus,Nu,Kappa,Phi,S]=asugs(x,A,params);
 % Runs the modified OPASS algorithm (using the ASUGS updates)
-% x is of length N
-% A is size PxK
-% of spikes in the data.
+% x is size NxD
+% A is a cell array of size D, with matrices size PxK is the SVD
 % params passes in a list of parameters:
 % params.alph is the parameter of the CRP
 % params.kappa_0, prior precision of mean on NW distribution
