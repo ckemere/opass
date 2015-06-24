@@ -22,7 +22,7 @@ Kappa_0=params.kappa_0;
 samplingrate=params.samplingrate;
 maxtimepoints=params.maxtimepoints
 %% Internal Parameters
-Cmax=50;
+Cmax=75;
 curndx=0;
 lookahead=10*samplingrate/1000;
 rang=3 * samplingrate/1000;
@@ -73,6 +73,14 @@ mT=N;
 sz=0;
 %%
 
+% generate fractional shift matrices.
+%  these are PDxPD matrices which circularly shift the data
+%  between -0.4 and + 0.5 samples
+shift_fractions = [-0.4:0.1:0.5];
+for i = 1:length(shift_fractions)
+
+end
+
 while curndx<N-P-rang
     %% set up parameters
 %     pii=(apii+sz)./(bpii+curndx);
@@ -98,10 +106,10 @@ while curndx<N-P-rang
         % lamda = inv(sig) % Phi{c}=inv(lamclus{c})
         r = Kappa(c)/(1+Kappa(c));
         Q = sig + r*Phi{c};
-        Qupdate = r*inv(Phi{c}) + lamda;
-        cholQupdate = chol(Qupdate);
-        Qinv = lamda - lamda * inv(cholQupdate)*inv(cholQupdate)' * lamda;
-        logDetQ = 2*log(det(cholQupdate)) + K*log(r) + log(det(Phi{c})) + logDetSig ;
+        % Qupdate = r*inv(Phi{c}) + lamda;
+        % % cholQupdate = chol(Qupdate);
+        % Qinv = lamda - lamda * inv(cholQupdate)*inv(cholQupdate)' * lamda;
+        % logDetQ = 2*log(diag(cholQupdate)) + K*log(r) + log(det(Phi{c})) + logDetSig ;
 
         xwindm=bsxfun(@minus,xwind,muu(:,c));
         if (c < C+1)
@@ -137,7 +145,7 @@ while curndx<N-P-rang
 
 
     % Spike detected!!
-    [~,offset]=min(lthr(Q:min(Q+rang,numel(lthr))));
+    [peak_thr,offset]=min(lthr(Q:min(Q+rang,numel(lthr))));
     Q=Q+offset-1; % this is the "peak"
     nz=nz+1;
     Qt=Q+curndx;
@@ -145,6 +153,12 @@ while curndx<N-P-rang
 
     [~,cTemp]=max(lon(:,Q));
     yhat=xwind(:,Q);
+
+    % if (C==6)
+        % keyboard
+    % end
+
+
     for c = 1:C+1
         r = Kappa(c)/(1+Kappa(c));
         dmuu = yhat - muu(:,c);
@@ -161,6 +175,7 @@ while curndx<N-P-rang
 
     if cSpike>C
         C=cSpike;
+        fprintf('New class (%d). Thr: %d\n', C, peak_thr);
         if (C == Cmax)
             keyboard
         end
@@ -177,24 +192,24 @@ while curndx<N-P-rang
 
     % Lamda is going to be the precision (inverse cov) of the cluster
     % lamclus{cSpike}=inv(Phi{cSpike});
-    muuS{cSpike}=[muuS{cSpike},muu(:,cSpike)];
-    PhiS{cSpike}{size(muuS{cSpike},2)}=PhiS{cSpike};
+    % muuS{cSpike}=[muuS{cSpike},muu(:,cSpike)];
+    % hiS{cSpike}{size(muuS{cSpike},2)}=PhiS{cSpike};
 
 
     gam(Qt)=cSpike;
     ngam(cSpike)=ngam(cSpike)+1;
 
-    if (C==7)
-        keyboard
-    end
-
-    for d = 1:D
-        xpad(Qt:Qt+P-1,d)=xpad(Qt:Qt+P-1,d)-A([1:P] + (d-1)*P,:)*yhat;
-    end
+    % for d = 1:D
+        % xpad(Qt:Qt+P-1,d)=xpad(Qt:Qt+P-1,d)-A([1:P] + (d-1)*P,:)*yhat;
+    % end
 
     S(:,Qt)=yhat;
     sz=sz+1;
-    curndx=Qt+samplingrate/5000; % step forward 0.2 ms
+    curndx=Qt+samplingrate/1000; % step forward 1 ms
+
+    if (mod(curndx,100000) == 0)
+        fprintf('*');
+    end
 
     % adapt alpha
     alph = C / (alph_lamda + log(sz));

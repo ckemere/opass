@@ -28,13 +28,13 @@ for d = 1:numCh
 end
 
 %% Set parameters:
-params.alph=0.001;
+params.alph=0.0001;
 params.alph_lamda = 1/params.alph;
 params.kappa_0=0.2;
 params.nu_0=K*numCh;
 params.Phi_0=eye(K*numCh);
 params.a_pii=1;
-params.b_pii=2.01;
+params.b_pii=2.1;
 % params.b_pii=1e7;
 params.bet=1./(30*samplingrate);
 params.samplingrate = samplingrate;
