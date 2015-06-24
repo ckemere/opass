@@ -8,10 +8,10 @@ fprintf('%d s of data\n',N/samplingrate);
 
 %% Set paramters
 P=round(3e-3*samplingrate); % window size is 3ms
-maxpoint=round(1.5e-3*samplingrate); % where to align waveform peaks
+maxpoint=round(1.2e-3*samplingrate); % where to align waveform peaks
 K=3; % Number of PCA components to use.
 sig=std(xa); % Noise standard deviation estimate
-thres=3*sig; % Detection voltage threshold
+thres=3.5*sig; % Detection voltage threshold
 
 %% Detect spike waveforms
 maxtimepoints=120*samplingrate; % limit to first 120s to simulate online system
@@ -34,7 +34,7 @@ params.kappa_0=0.2;
 params.nu_0=K*numCh;
 params.Phi_0=eye(K*numCh);
 params.a_pii=1;
-params.b_pii=2.5;
+params.b_pii=2.01;
 % params.b_pii=1e7;
 params.bet=1./(30*samplingrate);
 params.samplingrate = samplingrate;

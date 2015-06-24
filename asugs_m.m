@@ -22,7 +22,7 @@ Kappa_0=params.kappa_0;
 samplingrate=params.samplingrate;
 maxtimepoints=params.maxtimepoints
 %% Internal Parameters
-Cmax=300;
+Cmax=50;
 curndx=0;
 lookahead=10*samplingrate/1000;
 rang=3 * samplingrate/1000;
@@ -31,12 +31,10 @@ rang=3 * samplingrate/1000;
 [PD,K] = size(A);
 P = PD/D;
 
-CC = zeros(PD,maxtimepoints);
+CC = zeros(K,maxtimepoints);
 fprintf('Forming lag matrix.');
 for i=0:(size(CC,2)-1)
-   for d = 0:(D-1)
-       CC(d*P + [1:P],i+1) = x(i+[1:P],d+1);
-   end
+    CC(:,i+1) = A'*reshape(x(i+[1:P],:), PD, 1);
 end
 fprintf('\n');
 
@@ -47,7 +45,6 @@ sig = sig/size(CC,2);
 logDetSig = 2*sum(log(diag(chol(sig))));
 lamda=inv(sig);
 % detlamb=det(lamda);
-
 %%
 thr=log(apii/(bpii-apii));
 
@@ -77,18 +74,15 @@ sz=0;
 %%
 
 while curndx<N-P-rang
-    if (curndx > 1*samplingrate)
-        return;
-    end
     %% set up parameters
 %     pii=(apii+sz)./(bpii+curndx);
 %     thr=log(pii./(1-pii));
     ndx=(curndx+1:min(mT-P-rang,curndx+lookahead));n=numel(ndx);
     ndxwind=bsxfun(@plus,ndx,[0:P-1]');
 
-    xwind = zeros(PD,n);
+    xwind = zeros(K,n);
     for i = 1:n
-        xwind(:,i) = reshape(xpad(ndxwind(:,i),:),PD,1);
+        xwind(:,i) = A'*reshape(xpad(ndxwind(:,i),:),PD,1);
     end
 
     %% calc llk
@@ -103,13 +97,13 @@ while curndx<N-P-rang
         %   = sig + r*A*Phi{c}*A'
         % lamda = inv(sig) % Phi{c}=inv(lamclus{c})
         r = Kappa(c)/(1+Kappa(c));
-        Q = sig + r*A*Phi{c}*A';
-        Qupdate = r*inv(Phi{c}) + A'*lamda*A;
+        Q = sig + r*Phi{c};
+        Qupdate = r*inv(Phi{c}) + lamda;
         cholQupdate = chol(Qupdate);
-        Qinv = lamda - lamda * A * inv(cholQupdate)*inv(cholQupdate)' * A' * lamda;
+        Qinv = lamda - lamda * inv(cholQupdate)*inv(cholQupdate)' * lamda;
         logDetQ = 2*log(det(cholQupdate)) + K*log(r) + log(det(Phi{c})) + logDetSig ;
 
-        xwindm=bsxfun(@minus,xwind,A*muu(:,c));
+        xwindm=bsxfun(@minus,xwind,muu(:,c));
         if (c < C+1)
             Re=(ndx-tlastspike(c)) < 5 * samplingrate/1000; % refractory period
         else
@@ -138,7 +132,6 @@ while curndx<N-P-rang
     % no spike
     if (numel(Q)==0) || Q>lookahead-rang
         curndx=curndx+lookahead-rang;
-        keyboard
         continue
     end
 
@@ -151,7 +144,7 @@ while curndx<N-P-rang
     z(Qt)=1;
 
     [~,cTemp]=max(lon(:,Q));
-    yhat=A'*xwind(:,Q);
+    yhat=xwind(:,Q);
     for c = 1:C+1
         r = Kappa(c)/(1+Kappa(c));
         dmuu = yhat - muu(:,c);
@@ -191,7 +184,10 @@ while curndx<N-P-rang
     gam(Qt)=cSpike;
     ngam(cSpike)=ngam(cSpike)+1;
 
-    keyboard
+    if (C==7)
+        keyboard
+    end
+
     for d = 1:D
         xpad(Qt:Qt+P-1,d)=xpad(Qt:Qt+P-1,d)-A([1:P] + (d-1)*P,:)*yhat;
     end
