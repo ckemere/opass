@@ -80,6 +80,7 @@ shift_fractions = [-0.4:0.1:0.5];
 for i = 1:length(shift_fractions)
 
 end
+upsampleTemplate = zeros(P*10,D);
 
 while curndx<N-P-rang
     %% set up parameters
@@ -154,11 +155,6 @@ while curndx<N-P-rang
     [~,cTemp]=max(lon(:,Q));
     yhat=xwind(:,Q);
 
-    % if (C==6)
-        % keyboard
-    % end
-
-
     for c = 1:C+1
         r = Kappa(c)/(1+Kappa(c));
         dmuu = yhat - muu(:,c);
@@ -199,13 +195,26 @@ while curndx<N-P-rang
     gam(Qt)=cSpike;
     ngam(cSpike)=ngam(cSpike)+1;
 
-    % for d = 1:D
-        % xpad(Qt:Qt+P-1,d)=xpad(Qt:Qt+P-1,d)-A([1:P] + (d-1)*P,:)*yhat;
-    % end
+    for d=1:D
+        upsampTemplate(:,d) = interp(A([1:P] + (d-1)*P,:)*yhat, 10);
+    end
+    for i = 1:10
+        templateDifference1(i) = sum(sum( (xpad(Qt + [0:P-1], :) - upsampTemplate(i:10:end, :)).^2 ));
+        templateDifference2(i) = sum(sum( (xpad(Qt + [0:P-1] - 1, :) - upsampTemplate(i:10:end, :)).^2 ));
+    end
+    [m1, m1idx] = min(templateDifference1);
+    [m2, m2idx] = min(templateDifference2);
+
+    %%% Disable template subtraction (it breaks stuff)
+    %% if (m1 < m2)
+        %% xpad(Qt + [0:P-1],:) = xpad(Qt + [0:P-1],:) - upsampTemplate(m1idx:10:end,:);
+    %% else
+        %% xpad(Qt + [0:P-1],:) = xpad(Qt + [0:P-1]-1,:) - upsampTemplate(m2idx:10:end,:);
+    %% end
 
     S(:,Qt)=yhat;
     sz=sz+1;
-    curndx=Qt+samplingrate/1000; % step forward 1 ms
+    curndx=Qt+ round(0.001 * samplingrate); % step forward 1 ms
 
     if (mod(curndx,100000) == 0)
         fprintf('*');

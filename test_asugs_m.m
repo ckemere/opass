@@ -7,11 +7,11 @@ samplingrate=3e4; % 30 kHz
 fprintf('%d s of data\n',N/samplingrate);
 
 %% Set paramters
-P=round(3e-3*samplingrate); % window size is 3ms
-maxpoint=round(1.2e-3*samplingrate); % where to align waveform peaks
+P=round(4e-3*samplingrate); % window size is 3ms
+maxpoint=round(1.7e-3*samplingrate); % where to align waveform peaks
 K=3; % Number of PCA components to use.
 sig=std(xa); % Noise standard deviation estimate
-thres=3.5*sig; % Detection voltage threshold
+thres=3*sig; % Detection voltage threshold %% was 3.5
 
 %% Detect spike waveforms
 maxtimepoints=120*samplingrate; % limit to first 120s to simulate online system
@@ -28,11 +28,11 @@ for d = 1:numCh
 end
 
 %% Set parameters:
-params.alph=0.0001;
+params.alph=0.1;
 params.alph_lamda = 1/params.alph;
-params.kappa_0=0.2;
+params.kappa_0=0.1;
 params.nu_0=K*numCh;
-params.Phi_0=eye(K*numCh);
+params.Phi_0=10*eye(K*numCh);
 params.a_pii=1;
 params.b_pii=2.1;
 % params.b_pii=1e7;
@@ -41,18 +41,7 @@ params.samplingrate = samplingrate;
 params.maxtimepoints = maxtimepoints;
 
 tic;
-[z,gam,ngam,muu,Phi,nu,kappa,S]=asugs_m(xa,A,params); 
+[z,gam,ngam,muu,Phi,nu,kappa,S]=asugs_m(xa(1:450*samplingrate,:),A,params); 
 time1 = toc
 
-%% Plot non-trivial clusters
-% Plot spikes
-C=max(gam);
-col=hsv(C);
-figure(1);clf;hold on
-for c=1:C
-plot(S(1,gam==c),S(2,gam==c),'.','Color',col(c,:),'markersize',20)
-end
-hold off
-xlabel('PCA Component 1','FontSize',16)
-ylabel('PCA Component 2','FontSize',16)
-title('Inferred y_k Values for Detected Spikes','FontSize',18)
+run plot_clusters.m;
