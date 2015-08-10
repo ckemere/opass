@@ -1,5 +1,10 @@
+
+
+% assume x is already loaded - tetrode data
+
 % what part of the dataset to use
-mT=size(x,1);
+% mT=size(x,1);
+mT = 30000 * 180; % 3 minutes
 xa=x(1000:mT,:);
 
 [N,numCh]=size(xa);
@@ -41,7 +46,7 @@ params.samplingrate = samplingrate;
 params.maxtimepoints = maxtimepoints;
 
 tic;
-[z,gam,ngam,muu,Phi,nu,kappa,S]=asugs_m(xa(1:450*samplingrate,:),A,params); 
+[z,gam,ngam,muu,Phi,nu,kappa,S]=asugs_m(xa,A,params); 
 time1 = toc
 
 run plot_clusters.m;

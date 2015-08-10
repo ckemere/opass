@@ -30,6 +30,8 @@ peak_window = [-0.1e-3*samplingrate : 0.2e-3 * samplingrate];
 L = length(peak_window);
 
 % get array of detected spikes
+timepoints(timepoints - P < 0) = [];
+timepoints(timepoints + P > N) = [];
 spikes=zeros(P*D,numel(timepoints));
 for t=1:numel(timepoints)
     % we are going to align to the center of mass in a window around the peak

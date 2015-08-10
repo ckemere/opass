@@ -6,7 +6,7 @@ max_subplots_per_fig = 4;
 num_dim = K*numCh;
 
 numClasses=max(gam);
-col=hsv(C);
+col=hsv(numClasses);
 %% Plot non-trivial clusters
 
 n = 0;
@@ -27,7 +27,7 @@ for n = 1:length(cluster_pairs)
     end
     subplot(2,2,subCount)
     hold on
-    for c=1:C
+    for c=1:numClasses
         plot(S(cluster_pairs(n,1),gam==c),S(cluster_pairs(n,2),gam==c),'.','Color',col(c,:),'markersize',10)
     end
     hold off

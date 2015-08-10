@@ -16,6 +16,8 @@ while t<N-P
     t=t+P;
 end
 % get array of detected spikes
+timepoints(timepoints - maxpoint < 0) = [];
+timepoints(timepoints + P - maxpoint > size(x,1)) = [];
 spikes=zeros(P,numel(timepoints));
 for t=1:numel(timepoints)
     spikes(:,t)=x(timepoints(t)+(-maxpoint+1:P-maxpoint));
