@@ -1,51 +1,52 @@
-function [SpikeTimes, NeuronProperties] = simulateSpikeTimes(NumNeurons, TotalTime)
+function [SpikeTimes, NeuronProperties] = simulateSpikeTimes(NumNeurons, TotalTime, PositionFunction)
 % function [SpikeTimes] = simulateSpikeTimes(NumNeurons, TotalTime)
-
 % NumNeurons - number of neurons to simulate
 % TotalTime - total length of simulation in time
 
-NeuronStats.PlaceFieldFiringRate = 20; % Spikes per pass
-NeuronStats.PlaceFieldWidth = 20; % cm
+NeuronStats.PlaceFieldFiring = 20; % Spikes per pass
+NeuronStats.PlaceFieldWidth = 10; % cm
 NeuronStats.RippleFiringRate = 10; % Hz
 NeuronStats.RippleFiringProbability = 0.02; % per ripple
 
 
+% Simulated environment: Linear track
+TrackLength = 200; % cm
+NeuronStats.PlaceFieldCenterRange = [0, TrackLength];
+
+RunningSpeed = 25; % cm/s
+NeuronStats.ScaleFactor = NeuronStats.PlaceFieldFiring * RunningSpeed / sqrt(2*pi) / ...
+    NeuronStats.PlaceFieldWidth;
+
+EatingTime = 5; % seconds
+
 % We assume that neurons behave according to 2 patterns - ripples and running
 %  Ripples happen at 0 rad (reward site) each cycle
 
-
-TrackRadius = 35; % cm -> ~2 m circumference
-RunningSpeed = 25; % cm/s
-RadialRunningSpeed = RunningSpeed/TrackRadius; % rad/s = 2*pi*RunningSpeed/(2*pi*TrackRadius);
-NeuronStats.PlaceFieldConcentration = 1 / (NeuronStats.PlaceFieldWidth/TrackRadius)^2;
-NeuronStats.PeakFiring = NeuronStats.PlaceFieldFiringRate * RunningSpeed / sqrt(2*pi) / ...
-    NeuronStats.PlaceFieldWidth;
-NeuronStats.ScaleFactorVonMises = NeuronStats.PeakFiring * RunningSpeed / ...
-    (2*pi * besselk(0, NeuronStats.PlaceFieldConcentration));
-NeuronStats.MaximumRateVonMises = NeuronStats.ScaleFactorVonMises * exp(NeuronStats.PlaceFieldConcentration);
-
-EatingTime = 5; % seconds
 RippleRate = 2; % per second - Poisson process
 
-
-PositionFunction = @(t) RadialRunningSpeed * t;
+RippleRegionFunction = @(x) ( (x == 0) | (x == TrackLength));
 
 % Place cell firing
 for n = 1:NumNeurons
-    NeuronProperties(n) = generateRandomNeuron(NeuronStats);
+    NeuronProperties(n) = generateRandomNeuron(NeuronStats, RippleRegionFunction);
 end
 
 for n = 1:NumNeurons
-    poissonSpikes = poissrnd(NeuronProperties(n).MaximumRateVonMises * TotalTime);
+    poissonSpikes = poissrnd(NeuronProperties(n).ScaleFactor * TotalTime);
     spikeTimes = rand(poissonSpikes,1) * TotalTime;
-    deletionFlag = rand(poissonSpikes,1) < NeuronProperties.RateFunction(PositionFunction(spikeTimes));
+    deletionFlag = rand(poissonSpikes,1) < NeuronProperties(n).RateFunction( ...
+        PositionFunction(spikeTimes, RunningSpeed, TrackLength, EatingTime) );
     SpikeTimes{n} = spikeTimes(deletionFlag);
+    % NeuronProperties(n).FiringRate = NeuronProperties(n).RateFunction( ...
+        % PositionFunction(linspace(0,TotalTime,100*TotalTime), RunningSpeed, TrackLength, EatingTime) );
 end
 
-function [NeuronProperties] = generateRandomNeuron(NeuronStats)
+function [NeuronProperties] = generateRandomNeuron(NeuronStats, RippleRegionFunction)
     NeuronProperties = NeuronStats;
-    NeuronProperties.CenterAngle = rand(1,1) * 2*pi;
+    NeuronProperties.PlaceFieldCenter = rand(1,1) * diff(NeuronStats.PlaceFieldCenterRange) + ...
+        NeuronStats.PlaceFieldCenterRange(1);
+
     NeuronProperties.RateFunction = @(x) ...  % x is an angle, so we'll make this a Von Mises. 
-        NeuronStats.ScaleFactorVonMises * ...
-        exp(NeuronStats.PlaceFieldConcentration .* cos(x - NeuronProperties.CenterAngle));
+        ~RippleRegionFunction(x) .* (NeuronStats.ScaleFactor * ...
+        exp(-1/(2*NeuronStats.PlaceFieldWidth^2) * (x - NeuronProperties.PlaceFieldCenter).^2 ));
 
