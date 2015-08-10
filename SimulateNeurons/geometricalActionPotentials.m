@@ -18,6 +18,7 @@ TetrodeLocation = ...
 
 load excitatory_waveform;
 T = length(excitatory_waveform);
+SamplingRate = 30000; % Hz, for this waveform set
 
 
 % Generate neuron locations
@@ -51,11 +52,17 @@ td_sorted(td_min < MinDistanceToTetrode,:) = [];
 
 N = size(NeuronLocations,2); % number of neurons (modified after dropping)
 
+UpsamplingFactor = 100;
+
 % Simulate
 NeuronWaveform = zeros(T,N,4);
+UpsampledWaveform = zeros(T * UpsamplingFactor,N,4);
 SquishedNeuronWaveforms = zeros(T*4,N);
 for d = 1:4
     NeuronWaveform(:,:,d) = excitatory_waveform * transpose(1./(td_sorted(:,d).^Alpha)) * Scaling;
+    for n = 1:N
+        UpsampledWaveform(:,n,d) = interp(NeuronWaveform(:,n,d), UpsamplingFactor);
+    end
 end
 
 for i = 1:N
@@ -73,10 +80,38 @@ fprintf('%d neurons with peak peak more than 40.\n', sum(max(Peaks,[],2)>40));
 % Now simulate neurons in time
 % Assumptions (see Cheng and Frank 2007)
 % 
-% 1. Model from 
 % 
-for n = 1:N
+SimTime = 20 * 60; % 20 minutes
+[SpikeTimes, NeuronProps] = simulateSpikeTimes(N, SimTime, @simulatePosition);
 
+TD = SimTime * SamplingRate;
+SimData = zeros(TD, 4);
+
+TotalSpikes = 0;
+for n = 1:N
+    TotalSpikes = TotalSpikes + length(SpikeTimes{n});
+end
+
+JitteredPeaks = nan(TotalSpikes,4);
+ClusterIDs = nan(TotalSpikes,1);
+k = 1;
+
+for n = 1:N
+    SpikeIndex{n} = nan(length(SpikeTimes{n}),1);
+    ti = fix(SpikeTimes{n} * SamplingRate);
+    toff = ceil((SpikeTimes{n} * SamplingRate - ti) * UpsamplingFactor);
+    for i = 1:length(SpikeTimes{n})
+        SpikeIndex{n}(i) = ti(i);
+        w =  squeeze(UpsampledWaveform(toff(i):UpsamplingFactor:end,n,:));
+        JitteredPeaks(k,:) = max(w)';
+        ClusterIDs(k) = n;
+        k = k + 1;
+        idx = (1:T);
+        if (idx(1) + ti(i) < 1) | (idx(end) + ti(i) > TD)
+            idx( (idx + ti(i) < 1) | (idx + ti(i) > TD) ) = []; 
+        end
+        SimData(ti(i) + idx, :) = SimData(ti(i) + idx, :) + w(idx,:);
+    end
 end
 
 
