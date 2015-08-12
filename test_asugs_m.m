@@ -33,9 +33,9 @@ for d = 1:numCh
 end
 
 %% Set parameters:
-params.alph=0.1;
+params.alph=0.05;
 params.alph_lamda = 1/params.alph;
-params.kappa_0=0.1;
+params.kappa_0=0.01;
 params.nu_0=K*numCh;
 params.Phi_0=10*eye(K*numCh);
 params.a_pii=1;
@@ -44,9 +44,15 @@ params.b_pii=2.1;
 params.bet=1./(30*samplingrate);
 params.samplingrate = samplingrate;
 params.maxtimepoints = maxtimepoints;
+params.verbose = 1;
 
+kappa_options = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1];
+for i = 1:length(kappa_options)
+params.kappa_0 = kappa_options(i);
 tic;
 [z,gam,ngam,muu,Phi,nu,kappa,S]=asugs_m(xa,A,params); 
 time1 = toc
+number_of_classes(i) = sum(ngam > 0);
+end
 
 run plot_clusters.m;

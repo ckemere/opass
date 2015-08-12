@@ -10,10 +10,12 @@ col=hsv(numClasses);
 %% Plot non-trivial clusters
 
 n = 0;
-cluster_pairs = zeros(nchoosek(numCh,2),2);
-for i = 1:4
-    for j = (i+1):4
+cluster_pairs = zeros(nchoosek(4,2),2);
+% cluster_pairs = zeros(nchoosek(size(S,1),2),2);
+for i = 1:4 % size(S,1)
+    for j = (i+1):4 % size(S,1)
         n = n + 1;
+        % cluster_pairs(n,:) = [i,j];
         cluster_pairs(n,:) = [(i-1)*K+1,(j-1)*K+1];
     end
 end
@@ -28,10 +30,17 @@ for n = 1:length(cluster_pairs)
     subplot(2,2,subCount)
     hold on
     for c=1:numClasses
-        plot(S(cluster_pairs(n,1),gam==c),S(cluster_pairs(n,2),gam==c),'.','Color',col(c,:),'markersize',10)
+        idx = find(gam==c);
+        plot(S(cluster_pairs(n,1),idx),S(cluster_pairs(n,2),idx),'.','Color',col(c,:),'markersize',5);
+        hold on
+        for i = 1:length(idx)
+            h = text(S(cluster_pairs(n,1), idx(i)), S(cluster_pairs(n,2), idx(i)), sprintf('%d',c));
+            set(h,'fontsize',6);
+            set(h,'color',col(c,:));
+        end
     end
     hold off
-    xlabel('PCA Component 1','FontSize',16)
-    ylabel('PCA Component 2','FontSize',16)
+    xlabel(sprintf('PCA Component %d',cluster_pairs(n,1)),'FontSize',16)
+    ylabel(sprintf('PCA Component %d',cluster_pairs(n,2)),'FontSize',16)
     title('Inferred y_k Values for Detected Spikes','FontSize',18)
 end
