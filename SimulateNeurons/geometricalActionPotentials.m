@@ -81,7 +81,7 @@ fprintf('%d neurons with peak peak more than 40.\n', sum(max(Peaks,[],2)>40));
 % Assumptions (see Cheng and Frank 2007)
 % 
 % 
-SimTime = 20 * 60; % 20 minutes
+SimTime = 10 * 60; % 20 minutes
 [SpikeTimes, NeuronProps] = simulateSpikeTimes(N, SimTime, @simulatePosition);
 
 TD = SimTime * SamplingRate;
